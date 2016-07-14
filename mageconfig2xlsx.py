@@ -11,10 +11,17 @@ from xlsxwriter.workbook import Workbook
 import scope
 
 
+scope_enum = (
+    scope.DEFAULT,
+    scope.WEBSITE, 
+    scope.STORE
+)
+
+
 def get_config(current_scope, csv_dict):
     """Collect the different scopes per config key"""
     config = defaultdict(lambda: defaultdict(unicode))
-    for row in reader:
+    for row in csv_dict:
         if current_scope in row['scope_name']:
             for s in scope.scope_filter(current_scope):
                 config[row['path']][s]
@@ -24,12 +31,16 @@ def get_config(current_scope, csv_dict):
 
 def get_result(current_scope, config):
     """Transform the flat config into 2 dimensions"""
-    results = [[current_scope + ' config key'] + scope.scope_filter(current_scope)]
+    header1 = 'Top-level'
+    header2 = current_scope + ' config key'
+    results = [[header1, header2] + scope.scope_filter(current_scope)]
+
     for path in sorted(config.keys()):
-        results.append([path])
+        idx = len(results) - 1
+        results.append([path.split('/')[0]] + [path])
         for s in scope.scope_filter(current_scope):
             value = config[path][s]
-            results[len(results[s])-1].append(value)
+            results[idx].append(value)
     return results
 
 
@@ -44,7 +55,7 @@ for csvfile in glob.glob(os.path.join('.', '*.csv')):
     	f.seek(0)
         reader = csv.DictReader(f, dialect=dialect, doublequote=False, escapechar='\\')
 
-        for s in (scope.DEFAULT, scope.WEBSITE, scope.STORE):
+        for s in scope_enum:
             scope_worksheets[s] = workbook.add_worksheet(s)
             scope_worksheets[s].freeze_panes(1, 1)
             # extracting the configurations for each scope
@@ -53,7 +64,7 @@ for csvfile in glob.glob(os.path.join('.', '*.csv')):
 
     results = dict()
 
-    for s in (scope.DEFAULT, scope.WEBSITE, scope.STORE):
+    for s in scope_enum:
         # get the 2-dimensional config representation
         results[s] = get_result(s, configs[s])
         
